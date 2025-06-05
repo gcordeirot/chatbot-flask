@@ -107,8 +107,8 @@ HTML = """
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
-    .mensagem {
-      margin-bottom: 20px;
+    .user, .bot {
+      margin-bottom: 10px;
     }
     .user {
       color: #333;
@@ -116,60 +116,51 @@ HTML = """
     .bot {
       font-weight: 600;
       color: #111;
-      margin-top: 4px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Chatbot da Pingback 🤖</h1>
+    <h1>Chatbot da Pingback</h1>
     <form method="POST">
-      <input type="text" name="mensagem" placeholder="Digite sua pergunta aqui..." required>
+      <input type="text" name="mensagem" placeholder="Oi, eu sou o Pê, me pergunte algo!" required>
       <button type="submit">Enviar</button>
     </form>
+
+    {% if pergunta and resposta %}
     <div id="chatbox">
-      {% for par in historico %}
-        <div class="mensagem">
-          <div class="user">Você: {{ par.user }}</div>
-          <div class="bot">Pê: {{ par.bot }}</div>
-        </div>
-      {% endfor %}
+      <div class="user">Você: {{ pergunta }}</div>
+      <div class="bot">Pê: {{ resposta }}</div>
     </div>
+    {% endif %}
   </div>
 </body>
 </html>
 """
+
 # Página web interativa
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    if 'mensagens' not in globals():
-        global mensagens
-        mensagens = []
-    
-    historico = []
+    global mensagens
+    resposta = ""
+    pergunta = ""
 
     if request.method == 'POST':
         pergunta = request.form['mensagem']
-        mensagens.append(('user', pergunta))
+        mensagens = [('user', pergunta)]
 
         mensagem_system = '''Você é um assistente amigável chamado Pê, vc tenta ser mais resumido mas entregando a informação como um todo.
 Você utiliza as seguintes informações para formular suas respostas: {informacoes}'''
+
         mensagens_modelo = [('system', mensagem_system)] + mensagens
         template = ChatPromptTemplate.from_messages(mensagens_modelo)
         chain = template | chat
         resposta = chain.invoke({'informacoes': documento}).content
 
         mensagens.append(('assistant', resposta))
-    
-    # Criar histórico para exibir no HTML
-    for i in range(0, len(mensagens), 2):
-        if i + 1 < len(mensagens):
-            historico.append({
-                'user': mensagens[i][1],
-                'bot': mensagens[i + 1][1]
-            })
 
-    return render_template_string(HTML, historico=historico)
+    return render_template_string(HTML, pergunta=pergunta, resposta=resposta)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
